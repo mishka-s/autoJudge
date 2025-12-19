@@ -7,13 +7,13 @@ from scipy.sparse import hstack
 # --------------------------------
 # Load models and preprocessors
 # --------------------------------
-svm_clf = joblib.load("svm_classifier.pkl")
-rf_reg = joblib.load("rf_regressor.pkl")
+svm_clf = joblib.load("models/svm_classifier.pkl")
+rf_reg = joblib.load("models/rf_regressor.pkl")
 
-tfidf_cls = joblib.load("tfidf_classifier.pkl")
-tfidf_reg = joblib.load("tfidf_regressor.pkl")
+tfidf_cls = joblib.load("models/tfidf_classifier.pkl")
+tfidf_reg = joblib.load("models/tfidf_regressor.pkl")
 
-scaler = joblib.load("feature_scaler.pkl")
+scaler = joblib.load("models/feature_scaler.pkl")
 
 # --------------------------------
 # Feature extraction
@@ -21,17 +21,14 @@ scaler = joblib.load("feature_scaler.pkl")
 def extract_extra_features(text):
     text = text.lower()
 
-    # log text length
     text_len_log = np.log1p(len(text))
 
-    # keyword count
     keywords = [
         "dp", "dynamic programming", "graph", "tree",
         "dfs", "bfs", "recursion", "binary search", "greedy"
     ]
     keyword_count = sum(text.count(k) for k in keywords)
 
-    # math symbol density
     math_density = (
         len(re.findall(r"[=<>+\-*/%]", text)) / len(text)
         if len(text) > 0 else 0
@@ -45,6 +42,10 @@ def extract_extra_features(text):
 st.set_page_config(page_title="Problem Difficulty Predictor")
 
 st.title("🧠 Problem Difficulty Predictor")
+st.write(
+    "Paste a competitive programming problem description below "
+    "to predict its **difficulty class** and **difficulty score**."
+)
 
 desc = st.text_area("📘 Problem Description", height=200)
 inp = st.text_area("📥 Input Description", height=120)
@@ -56,7 +57,7 @@ if st.button("🔮 Predict Difficulty"):
     else:
         full_text = desc + " " + inp + " " + out
 
-        # ---------------- CLASSIFICATION ----------------
+        # ---- Classification ----
         X_text_cls = tfidf_cls.transform([full_text])
         X_extra = extract_extra_features(full_text)
         X_extra_scaled = scaler.transform(X_extra)
@@ -64,12 +65,11 @@ if st.button("🔮 Predict Difficulty"):
         X_cls_final = hstack([X_text_cls, X_extra_scaled])
         pred_class = svm_clf.predict(X_cls_final)[0]
 
-        # ---------------- REGRESSION ----------------
+        # ---- Regression ----
         X_text_reg = tfidf_reg.transform([full_text])
         X_reg_final = hstack([X_text_reg, X_extra_scaled])
         pred_score = rf_reg.predict(X_reg_final.toarray())[0]
 
-        # ---------------- OUTPUT ----------------
+        # ---- Output ----
         st.success(f"📊 Predicted Difficulty Class: **{pred_class}**")
         st.info(f"📈 Predicted Difficulty Score: **{pred_score:.2f}**")
-
